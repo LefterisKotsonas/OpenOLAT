@@ -607,5 +607,11 @@ Run single test as JUnit Test in Eclipse
 <a href="https://www.atlassian.com"><img src="https://www.atlassian.com/dam/jcr:93075b1a-484c-4fe5-8a4f-942710e51760/Atlassian-horizontal-blue@2x-rgb.png" height="61" width="481"></a>
 
 
-testing changes: asd aasdf sadf asdf sdf 23r sdf 
+for making changes to github repo:
+1) git checkout to the correct branch (ex. LefterisK)
+2) git merge changes from prod if they exist
+3) git add .
+4) git commit
+5) git push -u origin <--yourBranch-->
 
+for master branch, you can sync it with the original repo from github
