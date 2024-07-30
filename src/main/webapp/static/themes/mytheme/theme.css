@@ -1,0 +1,20 @@
+/* Error: calc(($o-page-width-max - 30px - 100vw)/2) is not a number.
+ *     ,
+ * 135 |     margin-left: min(calc(($o-page-width-max - 30px - 100vw)/2), ($grid-gutter-width * -0.5));
+ *     |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ *     '
+ *   light/modules/_offcanvas.scss 135:15  @import
+ *   light/_modules.scss 32:9              @import
+ *   light/theme.scss 22:9                 @import
+ *   mytheme/theme.scss 14:9               root stylesheet */
+
+body::before {
+  font-family: "Source Code Pro", "SF Mono", Monaco, Inconsolata, "Fira Mono",
+      "Droid Sans Mono", monospace, monospace;
+  white-space: pre;
+  display: block;
+  padding: 1em;
+  margin-bottom: 1em;
+  border-bottom: 2px solid black;
+  content: "Error: calc(($o-page-width-max - 30px - 100vw)/2) is not a number.\a     \2577 \a 135 \2502      margin-left: min(calc(($o-page-width-max - 30px - 100vw)/2), ($grid-gutter-width * -0.5));\a     \2502                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\a     \2575 \a   light/modules/_offcanvas.scss 135:15  @import\a   light/_modules.scss 32:9              @import\a   light/theme.scss 22:9                 @import\a   mytheme/theme.scss 14:9               root stylesheet";
+}
