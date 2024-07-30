@@ -193,7 +193,7 @@ public class BusinessGroupTest extends Deployments {
 		group
 			.openNews()
 			.createMessage()
-			.setMessage("Information 0", "A very important info")
+			.setMessage("Information 0", "A very important info", false)
 			.next()
 			.finish()
 		.	assertOnMessageTitle("Information 0");
@@ -214,11 +214,10 @@ public class BusinessGroupTest extends Deployments {
 		String directoryName = "New directory";
 		group
 			.openFolder()
-			.assertOnFolderCmp()
 			.createDirectory(directoryName)
 			.assertOnDirectory(directoryName)
 			.createHTMLFile("New file", "Some really cool content.")
-			.assertOnFile("New file.html");
+			.assertOnFileCard("New file.html");
 		
 		//check forum
 		String threadBodyMarker = UUID.randomUUID().toString();

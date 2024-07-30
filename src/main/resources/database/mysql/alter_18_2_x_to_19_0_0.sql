@@ -34,3 +34,22 @@ alter table o_bs_identity add column planneddeletiondate datetime;
 -- VFS
 alter table o_vfs_metadata add column f_deleted_date datetime;
 alter table o_vfs_metadata add column fk_deleted_by bigint;
+
+-- Media to Page Part (Content Editor)
+create table o_media_to_page_part (
+   id bigint not null auto_increment,
+   creationdate datetime not null,
+   lastmodified datetime not null,
+   pos bigint default null,
+   fk_media bigint not null,
+   fk_media_version bigint default null,
+   fk_identity bigint default null,
+   fk_page_part bigint not null,
+   primary key (id)
+);
+alter table o_media_to_page_part ENGINE = InnoDB;
+
+alter table o_media_to_page_part add constraint media_to_page_part_media_idx foreign key (fk_media) references o_media (id);
+alter table o_media_to_page_part add constraint media_to_page_part_media_version_idx foreign key (fk_media_version) references o_media_version (id);
+alter table o_media_to_page_part add constraint media_to_page_part_identity_idx foreign key (fk_identity) references o_bs_identity (id);
+alter table o_media_to_page_part add constraint media_to_page_part_page_part_idx foreign key (fk_page_part) references o_ce_page_part (id);

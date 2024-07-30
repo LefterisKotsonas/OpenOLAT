@@ -1,10 +1,33 @@
+/**
+ * <a href="https://www.openolat.org">
+ * OpenOLAT - Online Learning and Training</a><br>
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at the
+ * <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache homepage</a>
+ * <p>
+ * Unless required by applicable law or agreed to in writing,<br>
+ * software distributed under the License is distributed on an "AS IS" BASIS, <br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. <br>
+ * See the License for the specific language governing permissions and <br>
+ * limitations under the License.
+ * <p>
+ * Initial code contributed and copyrighted by<br>
+ * frentix GmbH, https://www.frentix.com
+ * <p>
+ */
 package org.olat.core.gui.components.form.flexible.impl.elements.table.filter;
 
+import java.io.Serializable;
 import java.time.Period;
 import java.time.temporal.ChronoUnit;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+import org.olat.commons.calendar.CalendarUtils;
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.form.flexible.elements.FlexiTableExtendedFilter;
 import org.olat.core.gui.components.form.flexible.elements.FlexiTableFilter;
@@ -25,10 +48,19 @@ public class FlexiTablePeriodFilter extends FlexiTableFilter implements FlexiTab
 
 	private final Locale locale;
 	private PeriodWithUnit value;
+	private final String futureLabel;
+	private final String pastLabel;
 	
 	public FlexiTablePeriodFilter(String label, String filter, boolean defaultVisible, Locale locale) {
+		this(label, filter, null, null, defaultVisible, locale);
+	}
+	
+	public FlexiTablePeriodFilter(String label, String filter, String futureLabel, String pastLabel,
+			boolean defaultVisible, Locale locale) {
 		super(label, filter);
 		this.locale = locale;
+		this.futureLabel = futureLabel;
+		this.pastLabel = pastLabel;
 		setDefaultVisible(defaultVisible);
 	}
 	
@@ -38,6 +70,14 @@ public class FlexiTablePeriodFilter extends FlexiTableFilter implements FlexiTab
 	
 	public PeriodWithUnit getPeriodWithUnit() {
 		return value;
+	}
+
+	public String getFutureLabel() {
+		return futureLabel;
+	}
+
+	public String getPastLabel() {
+		return pastLabel;
 	}
 
 	@Override
@@ -140,7 +180,29 @@ public class FlexiTablePeriodFilter extends FlexiTableFilter implements FlexiTab
 		return new FlexiFilterPeriodController(ureq, wControl, this);
 	}
 	
-	public record PeriodWithUnit(Period period, boolean past, int value, ChronoUnit unit) {
-		//
+	public record PeriodWithUnit(Period period, boolean past, int value, ChronoUnit unit) implements Serializable {
+
+		public Date toDateFromNow() {
+			Calendar cal = Calendar.getInstance();
+			int factor = past ? -1 : 1;
+			switch(unit) {
+				case DAYS:
+					cal.add(Calendar.DATE, factor * value);
+					break;
+				case WEEKS:
+					cal.add(Calendar.DATE, factor * value * 7);
+					break;
+				case MONTHS:
+					cal.add(Calendar.MONTH, factor * value);
+					break;
+				case YEARS:
+					cal.add(Calendar.YEAR, factor * value);
+					break;
+				default:
+					cal.add(Calendar.DATE, factor * value);
+					break;
+			}
+			return past ? CalendarUtils.startOfDay(cal.getTime()) : CalendarUtils.endOfDay(cal.getTime());
+		}
 	}
 }

@@ -182,9 +182,8 @@ public class VariousTest extends Deployments {
 		File documentsFile = new File(documentsUrl.toURI());
 		
 		new FolderPage(browser)
-			.assertOnFolderCmp()
+			.assertOnFolderTable()
 			.uploadFile(documentsFile)
-			.selectFile(documentsFile.getName())
 			.unzipFile(documentsFile.getName());
 		
 		navigation
@@ -233,7 +232,7 @@ public class VariousTest extends Deployments {
 			.clickToolbarBack();
 		
 		new FolderPage(browser)
-			.assertOnFolderCmp()
+			.assertOnFolderTable()
 			.createDirectory("Topics");
 
 		navigation

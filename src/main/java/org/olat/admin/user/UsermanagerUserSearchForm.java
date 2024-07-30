@@ -24,9 +24,9 @@
 */
 package org.olat.admin.user;
 
+import java.time.Period;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -36,7 +36,6 @@ import java.util.Map;
 import org.olat.basesecurity.OrganisationRoles;
 import org.olat.basesecurity.SearchIdentityParams;
 import org.olat.basesecurity.SearchIdentityParams.AuthProviders;
-import org.olat.commons.calendar.CalendarUtils;
 import org.olat.core.commons.services.webdav.WebDAVModule;
 import org.olat.core.commons.services.webdav.manager.WebDAVAuthManager;
 import org.olat.core.gui.UserRequest;
@@ -52,6 +51,7 @@ import org.olat.core.gui.components.form.flexible.elements.TextElement;
 import org.olat.core.gui.components.form.flexible.impl.FormBasicController;
 import org.olat.core.gui.components.form.flexible.impl.FormEvent;
 import org.olat.core.gui.components.form.flexible.impl.FormLayoutContainer;
+import org.olat.core.gui.components.form.flexible.impl.elements.table.filter.FlexiTablePeriodFilter.PeriodWithUnit;
 import org.olat.core.gui.components.link.Link;
 import org.olat.core.gui.components.util.OrganisationUIFactory;
 import org.olat.core.gui.components.util.SelectionValues;
@@ -70,7 +70,6 @@ import org.olat.login.oauth.OAuthSPI;
 import org.olat.login.webauthn.OLATWebAuthnManager;
 import org.olat.shibboleth.ShibbolethDispatcher;
 import org.olat.user.UserManager;
-import org.olat.user.propertyhandlers.EmailProperty;
 import org.olat.user.propertyhandlers.UserPropertyHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -95,15 +94,11 @@ public class UsermanagerUserSearchForm extends FormBasicController {
 	private DateChooser afterDate;
 	private DateChooser userLoginBefore;
 	private DateChooser userLoginAfter;
-	private TextElement userAccountExpirationInEl;
-	private TextElement userAccountExpirationSinceEl;
-	private SingleSelection userAccountExpirationInUnitEl;
-	private SingleSelection userAccountExpirationSinceUnitEl;
+	private TextElement userAccountExpirationEl;
+	private SingleSelection userAccountExpirationTypeEl;
+	private SingleSelection userAccountExpirationUnitEl;
 	private FormLink searchButton;
 
-	
-	private String[] statusKeys;
-	private String[] statusValues;
 	private List<String> roleKeys;
 	private List<String> roleValues;
 	private SelectionValues organisationSV;
@@ -115,6 +110,9 @@ public class UsermanagerUserSearchForm extends FormBasicController {
 	private List<UserPropertyHandler> userPropertyHandlers;
 	private final Map <String,FormItem> items = new HashMap<>();
 	private final List<Organisation> manageableOrganisations;
+	
+	private static final List<Integer> ALL_STATUS = List.of(Identity.STATUS_ACTIV, Identity.STATUS_INACTIVE,
+			Identity.STATUS_LOGIN_DENIED, Identity.STATUS_PENDING, Identity.STATUS_PERMANENT);
 	
 	@Autowired
 	private LoginModule loginModule;
@@ -143,21 +141,6 @@ public class UsermanagerUserSearchForm extends FormBasicController {
 		for(int i=0; i<roleKeys.size(); i++) {
 			roleValues.add(translate("search.form.constraint.".concat(roleKeys.get(i))));
 		}
-
-		statusKeys = new String[] { 
-				Integer.toString(Identity.STATUS_ACTIV),
-				Integer.toString(Identity.STATUS_PERMANENT),
-				Integer.toString(Identity.STATUS_PENDING),
-				Integer.toString(Identity.STATUS_INACTIVE),
-				Integer.toString(Identity.STATUS_LOGIN_DENIED)
-		};
-		statusValues = new String[] {
-				translate("rightsForm.status.activ"),
-				translate("rightsForm.status.permanent"),
-				translate("rightsForm.status.pending"),
-				translate("rightsForm.status.inactive"),
-				translate("rightsForm.status.login_denied")
-		};
 		
 		extraSearchKeys = new String[] { "no-resources", "no-eff-statements" };
 		extraSearchValues = new String[] { translate("no.resource"), translate("no.eff.statement") };
@@ -199,10 +182,12 @@ public class UsermanagerUserSearchForm extends FormBasicController {
 
 		String loginVal = getStringValue("login");
 		// when searching for deleted users, add wildcard to match with backup prefix
-		List<Integer> statusList = getStatus();
-		if (statusList.contains(Identity.STATUS_DELETED)) {
-			loginVal = "*" + loginVal;
+		List<Integer> statusList = status.getSelectedKeys().stream()
+				.map(Integer::valueOf).toList();
+		if(statusList.isEmpty()) {
+			statusList = ALL_STATUS;
 		}
+
 		loginVal = loginVal.equals("") ? null : loginVal;
 
 		// get user fields from form
@@ -218,10 +203,6 @@ public class UsermanagerUserSearchForm extends FormBasicController {
 					userPropertiesSearch.put(userPropertyHandler.getName(), uiValue);
 				}	
 			} else if (StringHelper.containsNonWhitespace(uiValue)) {
-				// when searching for deleted users, add wildcard to match with backup prefix
-				if (userPropertyHandler instanceof EmailProperty && statusList.contains(Identity.STATUS_DELETED)) {
-					uiValue = "*" + uiValue;
-				}
 				userPropertiesSearch.put(userPropertyHandler.getName(), uiValue);
 			}
 		}
@@ -262,39 +243,32 @@ public class UsermanagerUserSearchForm extends FormBasicController {
 		return userLoginAfter.getDate();
 	}
 
-	protected Date getExpireIn() {
-		return getExpiration(userAccountExpirationInEl, userAccountExpirationInUnitEl, false);
+	protected PeriodWithUnit getExpireIn() {
+		if(userAccountExpirationTypeEl.isOneSelected() && "future".equals(userAccountExpirationTypeEl.getSelectedKey())) {
+			return getExpiration(userAccountExpirationEl, userAccountExpirationUnitEl, false);
+		}
+		return null;
 	}
 	
-	protected Date getExpiredSince() {
-		return getExpiration(userAccountExpirationSinceEl, userAccountExpirationSinceUnitEl, true);
+	protected PeriodWithUnit getExpiredSince() {
+		if(userAccountExpirationTypeEl.isOneSelected() && "past".equals(userAccountExpirationTypeEl.getSelectedKey())) {
+			return getExpiration(userAccountExpirationEl, userAccountExpirationUnitEl, true);
+		}
+		return null;
 	}
 	
-	protected Date getExpiration(TextElement valueEl, SingleSelection unitEl, boolean past) {
+	protected PeriodWithUnit getExpiration(TextElement valueEl, SingleSelection unitEl, boolean past) {
 		String val = valueEl.getValue();
 		if(StringHelper.isLong(val)) {
 			int value = Integer.parseInt(val);
 			ChronoUnit unit = ChronoUnit.valueOf(unitEl.getSelectedKey());
-			Calendar cal = Calendar.getInstance();
-			int factor = past ? -1 : 1;
-			switch(unit) {
-				case DAYS:
-					cal.add(Calendar.DATE, factor * value);
-					break;
-				case WEEKS:
-					cal.add(Calendar.DATE, factor * value * 7);
-					break;
-				case MONTHS:
-					cal.add(Calendar.MONTH, factor * value);
-					break;
-				case YEARS:
-					cal.add(Calendar.YEAR, factor * value);
-					break;
-				default:
-					cal.add(Calendar.DATE, factor * value);
-					break;
-			}
-			return past ? CalendarUtils.startOfDay(cal.getTime()) : CalendarUtils.endOfDay(cal.getTime());
+			return switch(unit) {
+				case DAYS -> new PeriodWithUnit(Period.ofDays(value), past, value, ChronoUnit.DAYS);
+				case WEEKS -> new PeriodWithUnit(Period.ofWeeks(value), past, value, ChronoUnit.WEEKS);
+				case MONTHS -> new PeriodWithUnit(Period.ofMonths(value), past, value, ChronoUnit.MONTHS);
+				case YEARS -> new PeriodWithUnit(Period.ofYears(value), past, value, ChronoUnit.YEARS);
+				default -> new PeriodWithUnit(Period.ofDays(value), past, value, ChronoUnit.DAYS);
+			};
 		}
 		return null;
 	}
@@ -339,14 +313,6 @@ public class UsermanagerUserSearchForm extends FormBasicController {
 			}
 		}
 		return selectedOrganisations;
-	}
-	
-	protected List<Integer> getStatus() {
-		List<Integer> statusList = new ArrayList<>();
-		for(String selectedKey:status.getSelectedKeys()) {
-			statusList.add(Integer.valueOf(selectedKey));
-		}
-		return statusList;
 	}
 	
 	protected boolean isNoResources() {
@@ -467,12 +433,14 @@ public class UsermanagerUserSearchForm extends FormBasicController {
 				authKeysValues.keys(), authKeysValues.values(), 2);
 		
 		uifactory.addSpacerElement("space3", formLayout, false);
-		status = uifactory.addCheckboxesVertical("status", "search.form.title.status", formLayout, statusKeys, statusValues, 2);
-		status.select(statusKeys[0], true);	
-		status.select(statusKeys[1], true);	
-		status.select(statusKeys[2], true);	
-		status.select(statusKeys[3], true);	
-		status.select(statusKeys[4], true);	
+		
+		SelectionValues statusPK = new SelectionValues();
+		statusPK.add(SelectionValues.entry(Integer.toString(Identity.STATUS_ACTIV), translate("rightsForm.status.activ")));
+		statusPK.add(SelectionValues.entry(Integer.toString(Identity.STATUS_PERMANENT), translate("rightsForm.status.permanent")));
+		statusPK.add(SelectionValues.entry(Integer.toString(Identity.STATUS_PENDING), translate("rightsForm.status.pending")));
+		statusPK.add(SelectionValues.entry(Integer.toString(Identity.STATUS_INACTIVE), translate("rightsForm.status.inactive")));
+		statusPK.add(SelectionValues.entry(Integer.toString(Identity.STATUS_LOGIN_DENIED), translate("rightsForm.status.login_denied")));
+		status = uifactory.addCheckboxesVertical("status", "search.form.title.status", formLayout, statusPK.keys(), statusPK.values(), 2);
 		
 		extraSearch = uifactory.addCheckboxesVertical("extra.search", null, formLayout, extraSearchKeys, extraSearchValues, 2);
 
@@ -482,7 +450,6 @@ public class UsermanagerUserSearchForm extends FormBasicController {
 		beforeDate = uifactory.addDateChooser("search.form.beforeDate", null, formLayout);
 		beforeDate.setValidDateCheck("error.search.form.no.valid.datechooser");
 		
-
 		uifactory.addSpacerElement("space5", formLayout, false);
 		
 		SelectionValues unitPK = new SelectionValues();
@@ -491,21 +458,20 @@ public class UsermanagerUserSearchForm extends FormBasicController {
 		unitPK.add(SelectionValues.entry(ChronoUnit.MONTHS.name(), translate("filter.month")));
 		unitPK.add(SelectionValues.entry(ChronoUnit.YEARS.name(), translate("filter.year")));
 		
-		FormLayoutContainer userAccountExpirationCont = uifactory.addInlineFormLayout("search.form.userAccountExpirationIn", "search.form.userAccountExpirationIn", formLayout);
-		userAccountExpirationInEl = uifactory.addTextElement("search.form.user.account.expiration.in", null, 5, "", userAccountExpirationCont);
-		userAccountExpirationInEl.setDomReplacementWrapperRequired(false);
+		SelectionValues pastPK = new SelectionValues();
+		pastPK.add(SelectionValues.entry("future", translate("filter.expiration.future")));
+		pastPK.add(SelectionValues.entry("past", translate("filter.expiration.past")));
 
-		userAccountExpirationInUnitEl = uifactory.addDropdownSingleselect("search.form.user.account.expiration.in.unit", null, userAccountExpirationCont, unitPK.keys(), unitPK.values());
-		userAccountExpirationInUnitEl.setDomReplacementWrapperRequired(false);
-		userAccountExpirationInUnitEl.select(ChronoUnit.DAYS.name(), true);
+		FormLayoutContainer userAccountExpirationCont = uifactory.addInlineFormLayout("search.form.userAccountExpiration", "search.form.userAccountExpiration", formLayout);
+		userAccountExpirationTypeEl = uifactory.addDropdownSingleselect("search.form.userAccountExpiration.type", null, userAccountExpirationCont, pastPK.keys(), pastPK.values());
+		userAccountExpirationTypeEl.setDomReplacementWrapperRequired(false);
+		
+		userAccountExpirationEl = uifactory.addTextElement("search.form.user.account.expiration.value", null, 5, "", userAccountExpirationCont);
+		userAccountExpirationEl.setDomReplacementWrapperRequired(false);
 
-		FormLayoutContainer userAccountExpirationSinceCont = uifactory.addInlineFormLayout("search.form.userAccountExpirationSince", "search.form.userAccountExpirationSince", formLayout);
-		userAccountExpirationSinceEl = uifactory.addTextElement("search.form.user.account.expiration.since", null, 5, "", userAccountExpirationSinceCont);
-		userAccountExpirationSinceEl.setDomReplacementWrapperRequired(false);
-
-		userAccountExpirationSinceUnitEl = uifactory.addDropdownSingleselect("search.form.user.account.expiration.since.unit", null, userAccountExpirationSinceCont, unitPK.keys(), unitPK.values());
-		userAccountExpirationSinceUnitEl.setDomReplacementWrapperRequired(false);
-		userAccountExpirationSinceUnitEl.select(ChronoUnit.DAYS.name(), true);
+		userAccountExpirationUnitEl = uifactory.addDropdownSingleselect("search.form.user.account.expiration.unit", null, userAccountExpirationCont, unitPK.keys(), unitPK.values());
+		userAccountExpirationUnitEl.setDomReplacementWrapperRequired(false);
+		userAccountExpirationUnitEl.select(ChronoUnit.DAYS.name(), true);
 
 		uifactory.addSpacerElement("space6", formLayout, false);
 		userLoginAfter = uifactory.addDateChooser("search.form.userLoginAfterDate", null, formLayout);

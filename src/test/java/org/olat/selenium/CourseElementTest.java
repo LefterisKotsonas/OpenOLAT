@@ -812,7 +812,7 @@ public class CourseElementTest extends Deployments {
 		//set a message
 		infoMsgConfig
 			.createMessage()
-			.setMessage("Information 0", "A very important info")
+			.setMessage("Information 0", "A very important info", false)
 			.next()
 			.finish()
 			.assertOnMessageTitle("Information 0");
@@ -840,7 +840,7 @@ public class CourseElementTest extends Deployments {
 			.oldMessages();
 		infoMsgConfig
 			.editMessage("Information 2")
-			.setMessage("The latest information", "A very important info")
+			.setMessage("The latest information", "A very important info", true)
 			.next()
 			.finish()
 			.assertOnMessageTitle("The latest information");
@@ -1349,7 +1349,7 @@ public class CourseElementTest extends Deployments {
 		FolderPage directory = folder
 			.openReturnBox()
 			.assertOnEmptyFolderCard()
-			.addFileCard(coachImageFile)
+			.quickUploadFile(coachImageFile)
 			.assertOnFileCard(coachImageFile.getName());
 		
 		// The participant come in
@@ -1379,7 +1379,7 @@ public class CourseElementTest extends Deployments {
 		participantFolder
 			.openDropBox()
 			.assertOnEmptyFolderCard()
-			.addFileCard(participantImageFile)
+			.quickUploadFile(participantImageFile)
 			.assertOnFileCard(participantImageFile.getName());
 		
 		//Author check the image in the participant drop box
@@ -2307,6 +2307,7 @@ public class CourseElementTest extends Deployments {
 			.addSingleChoiceElement()
 			.addSingleChoice("Mercury", 2)
 			.addSingleChoice("Venus", 3)
+			.scrollTop()
 			.closeEditFragmentOfResource();
 		
 		surveyEditor

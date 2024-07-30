@@ -19,6 +19,8 @@
  */
 package org.olat.core.commons.services.folder.ui;
 
+import org.olat.core.commons.services.folder.ui.event.FileBrowserPushEvent;
+import org.olat.core.commons.services.folder.ui.event.FileBrowserSelectionEvent;
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.Component;
 import org.olat.core.gui.components.stack.TooledStackedPanel;
@@ -54,7 +56,7 @@ public class FolderTargetController extends BasicController {
 				submitButtonText);
 		listenTo(selectionCtrl);
 		stackedPanel.pushController(rootContainer.getName(), selectionCtrl);
-		selectionCtrl.updateCurrentContainer(currentContainer);
+		selectionCtrl.updateCurrentContainer(ureq, currentContainer);
 	}
 	
 	public Object getUserObject() {
@@ -86,11 +88,15 @@ public class FolderTargetController extends BasicController {
 						.filter(item -> item instanceof VFSContainer)
 						.findFirst()
 						.ifPresent(item -> setSelectdContainer((VFSContainer)item));
-			}
-			if (getSelectedContainer() != null) {
-				fireEvent(ureq, Event.DONE_EVENT);
+				if (getSelectedContainer() != null) {
+					fireEvent(ureq, Event.DONE_EVENT);
+				} else {
+					fireEvent(ureq, Event.CANCELLED_EVENT);
+				}
+			} else if (event instanceof FileBrowserPushEvent) {
+				// Do not fire to avoid closing the modal.
 			} else {
-				fireEvent(ureq, Event.CANCELLED_EVENT);
+				fireEvent(ureq, event);
 			}
 		}
 		super.event(ureq, source, event);

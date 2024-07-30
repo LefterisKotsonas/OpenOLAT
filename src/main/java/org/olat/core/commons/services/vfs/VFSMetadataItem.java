@@ -22,11 +22,11 @@ package org.olat.core.commons.services.vfs;
 import java.util.Date;
 import java.util.Objects;
 
-import org.olat.core.util.StringHelper;
 import org.olat.core.util.vfs.VFSContainer;
 import org.olat.core.util.vfs.VFSItem;
 import org.olat.core.util.vfs.VFSManager;
 import org.olat.core.util.vfs.VFSStatus;
+import org.olat.core.util.vfs.VFSSuccess;
 import org.olat.core.util.vfs.callbacks.VFSSecurityCallback;
 
 /**
@@ -40,9 +40,8 @@ public class VFSMetadataItem implements VFSItem {
 	private VFSContainer parentContainer;
 	private VFSMetadataRef vfsMetadataRef;
 	private VFSMetadata vfsMetadata;
-	private VFSItem vfsItem;
+	protected VFSItem vfsItem;
 	private VFSSecurityCallback secCallback;
-	protected String namedContainerName;
 	
 	protected final VFSRepositoryService vfsRepositoryService;
 	
@@ -82,7 +81,6 @@ public class VFSMetadataItem implements VFSItem {
 
 	protected void reset() {
 		vfsMetadata = null;
-		vfsItem = null;
 	}
 	
 	@Override
@@ -119,35 +117,35 @@ public class VFSMetadataItem implements VFSItem {
 	}
 	
 	@Override
-	public VFSStatus rename(String newname) {
+	public VFSSuccess rename(String newname) {
 		if (getItem() == null) {
-			return VFSStatus.ERROR_FAILED;
+			return VFSSuccess.ERROR_FAILED;
 		}
-		VFSStatus vfsStatus = getItem().rename(newname);
+		VFSSuccess vfsStatus = getItem().rename(newname);
 		reset();
 		return vfsStatus;
 	}
 
 	@Override
-	public VFSStatus delete() {
+	public VFSSuccess delete() {
 		if (getItem() == null) {
-			return VFSStatus.SUCCESS;
+			return VFSSuccess.SUCCESS;
 		}
 		return getItem().delete();
 	}
 
 	@Override
-	public VFSStatus restore(VFSContainer targetContainer) {
+	public VFSSuccess restore(VFSContainer targetContainer) {
 		if (getItem() == null) {
-			return VFSStatus.NO;
+			return VFSSuccess.ERROR_FAILED;
 		}
 		return getItem().restore(targetContainer);
 	}
 
 	@Override
-	public VFSStatus deleteSilently() {
+	public VFSSuccess deleteSilently() {
 		if (getItem() == null) {
-			return VFSStatus.SUCCESS;
+			return VFSSuccess.SUCCESS;
 		}
 		return getItem().deleteSilently();
 	}
@@ -202,9 +200,6 @@ public class VFSMetadataItem implements VFSItem {
 
 	@Override
 	public String getName() {
-		if (StringHelper.containsNonWhitespace(namedContainerName)) {
-			return namedContainerName;
-		}
 		if (getMetaInfo() == null) {
 			return null;
 		}

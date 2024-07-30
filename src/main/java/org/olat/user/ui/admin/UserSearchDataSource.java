@@ -20,9 +20,7 @@
 package org.olat.user.ui.admin;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -30,7 +28,6 @@ import org.olat.basesecurity.IdentityPowerSearchQueries;
 import org.olat.basesecurity.SearchIdentityParams;
 import org.olat.basesecurity.model.IdentityPropertiesRow;
 import org.olat.basesecurity.model.OrganisationRefImpl;
-import org.olat.commons.calendar.CalendarUtils;
 import org.olat.core.CoreSpringFactory;
 import org.olat.core.commons.persistence.DefaultResultInfos;
 import org.olat.core.commons.persistence.ResultInfos;
@@ -94,16 +91,19 @@ public class UserSearchDataSource implements FlexiTableDataSourceDelegate<Identi
 			searchParams.setSearchString(null);
 		}
 		
-		Date expireIn = getExpireIn(filters);
-		Date expiredSince = getExpiredSince(filters);
+		PeriodWithUnit expireIn = getExpireIn(filters);
+		PeriodWithUnit expiredSince = getExpiredSince(filters);
 		if(expireIn != null || expiredSince != null) {
 			searchParams.setExpireIn(expireIn);
 			searchParams.setExpiredSince(expiredSince);
+		} else {
+			searchParams.setExpireIn(null);
+			searchParams.setExpiredSince(null);
 		}
 		
 		if(isStatusShowAll(filters)) {
 			searchParams.setStatus(null);
-			searchParams.setExactStatusList(List.of());
+			searchParams.setExactStatusList(UserSearchTableController.ALL_STATUS);
 		} else {
 			List<Integer> exactStatusList = getStatusFromFilter(filters);
 			if(exactStatusList.isEmpty()) {
@@ -136,34 +136,31 @@ public class UserSearchDataSource implements FlexiTableDataSourceDelegate<Identi
 		FlexiTableFilter statusFilter = FlexiTableFilter.getFilter(filters, UserSearchTableController.FILTER_STATUS);
 		if(statusFilter != null ) {
 			List<String> filterValues = ((FlexiTableExtendedFilter)statusFilter).getValues();
-			if(filterValues == null || filterValues.isEmpty() || filterValues.size() == 5) {
+			if(filterValues == null || filterValues.isEmpty()
+					|| filterValues.size() == UserSearchTableController.ALL_STATUS.size()) {
 				return true;
 			}
 		}
 		return false;
 	}
 	
-	private Date getExpireIn(List<FlexiTableFilter> filters) {
+	private PeriodWithUnit getExpireIn(List<FlexiTableFilter> filters) {
 		FlexiTableFilter expireFilter = FlexiTableFilter.getFilter(filters, UserSearchTableController.FILTER_INACTIVATION_DATE);
 		if(expireFilter instanceof FlexiTablePeriodFilter filter) {
 			PeriodWithUnit period = filter.getPeriodWithUnit();
 			if(period != null && !period.past()) {
-				Calendar cal = Calendar.getInstance();
-				cal.add(Calendar.DATE, period.period().getDays());
-				return CalendarUtils.endOfDay(cal.getTime());
+				return period;
 			}
 		}
 		return null;
 	}
 	
-	private Date getExpiredSince(List<FlexiTableFilter> filters) {
+	private PeriodWithUnit getExpiredSince(List<FlexiTableFilter> filters) {
 		FlexiTableFilter expireFilter = FlexiTableFilter.getFilter(filters, UserSearchTableController.FILTER_INACTIVATION_DATE);
 		if(expireFilter instanceof FlexiTablePeriodFilter filter) {
 			PeriodWithUnit period = filter.getPeriodWithUnit();
 			if(period != null && period.past()) {
-				Calendar cal = Calendar.getInstance();
-				cal.add(Calendar.DATE, -period.period().getDays());
-				return CalendarUtils.startOfDay(cal.getTime());
+				return period;
 			}
 		}
 		return null;
@@ -180,6 +177,8 @@ public class UserSearchDataSource implements FlexiTableDataSourceDelegate<Identi
 						statusList.add(Integer.parseInt(value));
 					}	
 				}
+			} else {
+				statusList = UserSearchTableController.ALL_STATUS;
 			}
 		}
 		return statusList;

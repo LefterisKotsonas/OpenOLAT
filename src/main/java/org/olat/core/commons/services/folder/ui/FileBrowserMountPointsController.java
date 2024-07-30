@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Locale;
 
 import org.olat.admin.sysinfo.manager.CustomStaticFolderManager;
+import org.olat.core.commons.services.folder.ui.event.FileBrowserPushEvent;
+import org.olat.core.commons.services.folder.ui.event.FileBrowserTitleEvent;
 import org.olat.core.commons.services.webdav.WebDAVModule;
 import org.olat.core.commons.services.webdav.WebDAVProvider;
 import org.olat.core.gui.UserRequest;
@@ -114,7 +116,11 @@ public class FileBrowserMountPointsController extends BasicController {
 				selectionMode, submitButtonText);
 		listenTo(folderSelectionCtrl);
 		
-		stackedPanel.pushController(provider.getName(getLocale()), folderSelectionCtrl);
+		String providerName = provider.getName(getLocale());
+		stackedPanel.pushController(providerName, folderSelectionCtrl);
+		
+		fireEvent(ureq, new FileBrowserTitleEvent(providerName));
+		fireEvent(ureq, new FileBrowserPushEvent());
 	}
 
 	@Override

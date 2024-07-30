@@ -49,6 +49,7 @@ import org.olat.core.gui.control.Controller;
 import org.olat.core.gui.control.Event;
 import org.olat.core.gui.control.WindowControl;
 import org.olat.core.gui.control.generic.closablewrapper.CloseableModalController;
+import org.olat.core.id.IdentityEnvironment;
 import org.olat.core.id.OLATResourceable;
 import org.olat.core.logging.activity.ILoggingAction;
 import org.olat.core.logging.activity.LearningResourceLoggingAction;
@@ -576,7 +577,7 @@ public class CourseToolbarController extends FormBasicController {
 		}
 	}
 
-	private void doUpdateZoomConfig(boolean enableZoom, boolean updateZoom) {
+	private void doUpdateZoomConfig(boolean enableZoom) {
 		String subIdent = course.getResourceableId().toString();
 		if (enableZoom) {
 			ZoomProfile zoomProfile = zoomManager.getProfile(zoomProfileEl.getSelectedKey());
@@ -743,7 +744,7 @@ public class CourseToolbarController extends FormBasicController {
 		boolean enableZoom = zoomEl != null && zoomEl.isSelected(0);
 		boolean updateZoom = courseConfig.isZoomEnabled() != enableZoom;
 		courseConfig.setZoomEnabled(enableZoom && toolbarEnabled);
-		doUpdateZoomConfig(enableZoom, updateZoom);
+		doUpdateZoomConfig(enableZoom);
 
 		boolean enableBlog = blogEl.isSelected(0);
 		boolean updateBlog = courseConfig.isBlogEnabled() != enableBlog;
@@ -994,7 +995,8 @@ public class CourseToolbarController extends FormBasicController {
 	}
 	
 	private void doSelectDocumentsFolder(UserRequest ureq) {
-		VFSContainer namedContainer = course.getCourseFolderContainer(CourseContainerOptions.withoutElements());
+		IdentityEnvironment identityEnv = ureq.getUserSession().getIdentityEnvironment();
+		VFSContainer namedContainer = course.getCourseFolderContainer(identityEnv, CourseContainerOptions.withoutElements(), false, Boolean.TRUE);
 		
 		folderSelectCtrl = new BCCourseNodeEditChooseFolderForm(ureq, getWindowControl(), namedContainer);
 		listenTo(folderSelectCtrl);

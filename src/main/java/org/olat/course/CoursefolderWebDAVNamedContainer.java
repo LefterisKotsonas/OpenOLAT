@@ -20,12 +20,15 @@
 package org.olat.course;
 
 import org.apache.logging.log4j.Logger;
+import org.olat.core.commons.services.vfs.VFSMetadata;
 import org.olat.core.id.IdentityEnvironment;
 import org.olat.core.logging.Tracing;
 import org.olat.core.util.vfs.NamedContainerImpl;
 import org.olat.core.util.vfs.VFSContainer;
+import org.olat.core.util.vfs.VFSStatus;
 import org.olat.core.util.vfs.VirtualContainer;
 import org.olat.core.util.vfs.filters.VFSItemFilter;
+import org.olat.course.folder.CourseContainerOptions;
 import org.olat.repository.RepositoryEntry;
 
 /**
@@ -39,11 +42,13 @@ class CoursefolderWebDAVNamedContainer extends NamedContainerImpl {
 	private RepositoryEntry entry;
 	private VFSContainer parentContainer;
 	
+	private final Boolean entryAdmin;
 	private final IdentityEnvironment identityEnv;
 	
-	public CoursefolderWebDAVNamedContainer(String courseTitle, RepositoryEntry entry, IdentityEnvironment identityEnv) {
+	public CoursefolderWebDAVNamedContainer(String courseTitle, RepositoryEntry entry, IdentityEnvironment identityEnv, Boolean entryAdmin) {
 		super(courseTitle, null);
 		this.entry = entry;
+		this.entryAdmin = entryAdmin;
 		this.identityEnv = identityEnv;
 		setIconCSS("o_CourseModule_icon");
 	}
@@ -63,13 +68,39 @@ class CoursefolderWebDAVNamedContainer extends NamedContainerImpl {
 	public boolean exists() {
 		return true;
 	}
+	
+	@Override
+	public VFSStatus canMeta() {
+		return VFSStatus.NO;
+	}
+
+	@Override
+	public VFSStatus canWrite() {
+		return getDelegate().canWrite();
+	}
+
+	@Override
+	public VFSStatus canCopy() {
+		return getDelegate().canCopy();
+	}
+
+	@Override
+	public VFSStatus canVersion() {
+		return VFSStatus.NO;
+	}
+
+	@Override
+	public VFSMetadata getMetaInfo() {
+		// Don't return the metainfo from the /coursefolder/ because this container
+		// is a virtual one.
+		return null;
+	}
 
 	@Override
 	public VFSContainer getDelegate() {
 		if(super.getDelegate() == null) {
 			try {
-				ICourse course = CourseFactory.loadCourse(entry);
-				VFSContainer courseFolder = course.getCourseFolderContainer(identityEnv);
+				VFSContainer courseFolder = CourseFactory.loadCourseContainer(entry, identityEnv, CourseContainerOptions.all(), false, entryAdmin);
 				setDelegate(courseFolder);
 				if(parentContainer != null) {
 					super.setParentContainer(parentContainer);

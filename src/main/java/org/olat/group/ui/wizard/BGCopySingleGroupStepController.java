@@ -50,6 +50,12 @@ public class BGCopySingleGroupStepController extends StepFormBasicController   {
 		groupController = new BusinessGroupFormController(ureq, getWindowControl(), originalGroup, mainForm);
 		listenTo(groupController);
 		groupController.setGroupName(originalGroup.getName() + " " + translate("bgcopywizard.copyform.name.copy"));	
+		groupController.setGroupDescription(originalGroup.getDescription());
+		groupController.setGroupMin(originalGroup.getMinParticipants());
+		groupController.setGroupMax(originalGroup.getMaxParticipants());
+		groupController.setEnableWaitingList(originalGroup.getWaitingListEnabled());
+		groupController.setEnableAutoCloseRanks(originalGroup.getAutoCloseRanksEnabled());
+		groupController.setAllowToLeave(originalGroup.isAllowToLeave());
 		
 		initForm(ureq);
 	}
@@ -82,20 +88,17 @@ public class BGCopySingleGroupStepController extends StepFormBasicController   {
 		
 		BGCopyBusinessGroup currentCopy = getWithOriginal(copies);
 		if(currentCopy == null) {
-			BGCopyBusinessGroup group = new BGCopyBusinessGroup(originalGroup);
-			group.setNames(groupController.getGroupNames());
-			group.setDescription(groupController.getGroupDescription());
-			group.setMinParticipants(groupController.getGroupMin());
-			group.setMaxParticipants(groupController.getGroupMax());
-			group.setAllowToLeave(groupController.isAllowToLeave());
-			copies.add(group);
-		} else {
-			currentCopy.setNames(groupController.getGroupNames());
-			currentCopy.setDescription(groupController.getGroupDescription());
-			currentCopy.setMinParticipants(groupController.getGroupMin());
-			currentCopy.setMaxParticipants(groupController.getGroupMax());
-			currentCopy.setAllowToLeave(groupController.isAllowToLeave());
+			currentCopy = new BGCopyBusinessGroup(originalGroup);
+			copies.add(currentCopy);
 		}
+		currentCopy.setNames(groupController.getGroupNames());
+		currentCopy.setDescription(groupController.getGroupDescription());
+		currentCopy.setMinParticipants(groupController.getGroupMin());
+		currentCopy.setMaxParticipants(groupController.getGroupMax());
+		currentCopy.setAllowToLeave(groupController.isAllowToLeave());
+		currentCopy.setAutoCloseRanksEnabled(groupController.isAutoCloseRanksEnabled());
+		currentCopy.setWaitingListEnabled(groupController.isWaitingListEnabled());
+		
 		fireEvent(ureq, StepsEvent.ACTIVATE_NEXT);
 	}
 	

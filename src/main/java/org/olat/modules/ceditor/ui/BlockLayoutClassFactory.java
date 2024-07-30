@@ -23,6 +23,7 @@ import org.olat.modules.ceditor.PageElement;
 import org.olat.modules.ceditor.model.AlertBoxSettings;
 import org.olat.modules.ceditor.model.BlockLayoutSettings;
 import org.olat.modules.ceditor.model.CodeSettings;
+import org.olat.modules.ceditor.model.GallerySettings;
 import org.olat.modules.ceditor.model.ImageSettings;
 import org.olat.modules.ceditor.model.MathSettings;
 import org.olat.modules.ceditor.model.MediaSettings;
@@ -39,11 +40,18 @@ import org.olat.modules.ceditor.model.jpa.MediaPart;
  */
 public class BlockLayoutClassFactory {
 
+	public static String buildClass(GallerySettings settings, boolean inForm) {
+		if (settings == null) {
+			return getPredefinedCssClass(inForm);
+		}
+		return buildClass(settings.getLayoutSettings(), settings.getAlertBoxSettings(), inForm);
+	}
+
 	public static String buildClass(QuizSettings settings, boolean inForm) {
 		if (settings == null) {
 			return getPredefinedCssClass(inForm);
 		}
-		return buildClass(settings.getLayoutSettings(), inForm);
+		return buildClass(settings.getLayoutSettings(), settings.getAlertBoxSettings(), inForm);
 	}
 
 	public static String buildClass(CodeSettings settings, boolean inForm) {

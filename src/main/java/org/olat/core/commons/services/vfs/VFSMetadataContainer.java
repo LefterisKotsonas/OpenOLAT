@@ -30,6 +30,7 @@ import org.olat.core.util.vfs.VFSContainer;
 import org.olat.core.util.vfs.VFSItem;
 import org.olat.core.util.vfs.VFSLeaf;
 import org.olat.core.util.vfs.VFSStatus;
+import org.olat.core.util.vfs.VFSSuccess;
 import org.olat.core.util.vfs.callbacks.VFSSecurityCallback;
 import org.olat.core.util.vfs.filters.VFSItemFilter;
 
@@ -51,7 +52,7 @@ public class VFSMetadataContainer extends VFSMetadataItem implements VFSContaine
 		this(vfsRepositoryService, cached, wrappedContainer.getMetaInfo(), wrappedContainer.getParentContainer(),
 				wrappedContainer.getLocalSecurityCallback(), wrappedContainer.getDefaultItemFilter());
 		if (wrappedContainer instanceof NamedContainerImpl namedContainer) {
-			this.namedContainerName = namedContainer.getName();
+			this.vfsItem = wrappedContainer;
 		}
 	}
 
@@ -90,6 +91,14 @@ public class VFSMetadataContainer extends VFSMetadataItem implements VFSContaine
 		return defaultFilter;
 	}
 	
+	@Override
+	public String getName() {
+		if (vfsItem instanceof NamedContainerImpl namedContainer) {
+			return vfsItem.getName();
+		}
+		return super.getName();
+	}
+
 	@Override
 	public boolean isInPath(String path) {
 		if (getMetaInfo() == null || getMetaInfo().getRelativePath() == null) {
@@ -217,23 +226,23 @@ public class VFSMetadataContainer extends VFSMetadataItem implements VFSContaine
 	}
 	
 	@Override
-	public VFSStatus copyFrom(VFSItem source, Identity savedBy) {
+	public VFSSuccess copyFrom(VFSItem source, Identity savedBy) {
 		if (getItem() instanceof VFSContainer vfsContainer) {
-			VFSStatus vfsStatus = vfsContainer.copyFrom(source, savedBy);
+			VFSSuccess vfsStatus = vfsContainer.copyFrom(source, savedBy);
 			reset();
 			return vfsStatus;
 		}
-		return VFSStatus.ERROR_FAILED;
+		return VFSSuccess.ERROR_FAILED;
 	}
 
 	@Override
-	public VFSStatus copyContentOf(VFSContainer container, Identity savedBy) {
+	public VFSSuccess copyContentOf(VFSContainer container, Identity savedBy) {
 		if (getItem() instanceof VFSContainer vfsContainer) {
-			VFSStatus vfsStatus = vfsContainer.copyContentOf(container, savedBy);
+			VFSSuccess vfsStatus = vfsContainer.copyContentOf(container, savedBy);
 			reset();
 			return vfsStatus;
 		}
-		return VFSStatus.ERROR_FAILED;
+		return VFSSuccess.ERROR_FAILED;
 	}
 
 	@Override

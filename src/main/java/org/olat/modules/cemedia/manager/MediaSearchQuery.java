@@ -89,6 +89,9 @@ public class MediaSearchQuery {
 			} else {
 				sb.and().append("(");
 				appendSharedAll(sb, parameters);
+				if (parameters.getScope() == Scope.SHARED_WITH_ME && parameters.getRepositoryEntry() != null) {
+					repositoryEntryKey = parameters.getRepositoryEntry().getKey();
+				}
 				sb.append(")");
 			}
 		}
@@ -238,6 +241,10 @@ public class MediaSearchQuery {
 			} else {
 				roles = new GroupRoles[]{ GroupRoles.owner };
 			}
+			Long repositoryEntryKey = null;
+			if (parameters.getScope() == Scope.SHARED_WITH_ME && parameters.getRepositoryEntry() != null) {
+				repositoryEntryKey = parameters.getRepositoryEntry().getKey();
+			}
 			sb.append(" exists (select shareReRel.key from mediatogroup as shareReRel")
 			  .append("  inner join shareReRel.repositoryEntry as v")
 			  .append("  inner join v.groups as relGroup")
@@ -245,6 +252,7 @@ public class MediaSearchQuery {
 	          .append("  inner join vBaseGroup.members as vMembership")
 			  .append("  where shareReRel.media.key=media.key and shareReRel.type").in(MediaToGroupRelationType.REPOSITORY_ENTRY)
 			  .append("    and vMembership.identity.key=:identityKey and vMembership.role").in(roles)
+			  .append("    and shareReRel.repositoryEntry.key=:entryKey", repositoryEntryKey != null)
 			  .append(")");
 
 			sb.append(")");
@@ -261,27 +269,62 @@ public class MediaSearchQuery {
 		if(parameters.getUsedIn().contains(UsedIn.PAGE) && parameters.getUsedIn().contains(UsedIn.PORTFOLIO) && parameters.getUsedIn().contains(UsedIn.NOT_USED)) {
 			// mean all -> no filter
 		} else if(parameters.getUsedIn().contains(UsedIn.PAGE) && parameters.getUsedIn().contains(UsedIn.PORTFOLIO)) {
-			sb.and().append(" exists (select mediaPart.key from cemediapart mediaPart")
-			  .append("  where mediaPart.media.key=media.key")
+			sb.and()
+			  .append(" (")
+			  .append("  exists (select mediaPart.key from cemediapart mediaPart")
+			  .append("   where mediaPart.media.key=media.key")
+			  .append("  )")
+			  .append(" or ")
+			  .append("  exists (select galleryPart.key from cegallerypart galleryPart")
+			  .append("    inner join mediatopagepart as relation on (relation.pagePart.key=galleryPart.key)")
+			  .append("    where relation.media.key=media.key")
+			  .append("  )")
 			  .append(" )");
 		} else if(parameters.getUsedIn().contains(UsedIn.PAGE)) {
-			sb.and().append(" exists (select 1 from cemediapart as pageRefMediaPart")
-			  .append(" inner join cepagebody as pageRefBody on (pageRefBody.key=pageRefMediaPart.body.key)")
-			  .append(" inner join cepage as pageRef on (pageRef.body.key=pageRefBody.key)")
-			  .append(" inner join cepagereference ref on (ref.page.key=pageRef.key)")
-			  .append(" where pageRefMediaPart.media.key=media.key")
-			  .append(")");
+			sb.and()
+			  .append(" (")
+			  .append("  exists (select 1 from cemediapart as pageRefMediaPart")
+			  .append("   inner join cepagebody as pageRefBody on (pageRefBody.key=pageRefMediaPart.body.key)")
+			  .append("   inner join cepage as pageRef on (pageRef.body.key=pageRefBody.key)")
+			  .append("   inner join cepagereference ref on (ref.page.key=pageRef.key)")
+			  .append("   where pageRefMediaPart.media.key=media.key")
+			  .append("  )")
+			  .append(" or ")
+			  .append("  exists (select 1 from cegallerypart galleryPart")
+			  .append("   inner join mediatopagepart as relation on (relation.pagePart.key=galleryPart.key)")
+			  .append("   inner join cepagebody as body on (body.key=galleryPart.body.key)")
+			  .append("   inner join cepage as page on (page.body.key=body.key)")
+			  .append("   inner join cepagereference ref on (ref.page.key=page.key)")
+			  .append("   where relation.media.key=media.key")
+			  .append("  )")
+			  .append(" )");
 		} else if(parameters.getUsedIn().contains(UsedIn.PORTFOLIO)) {
-			sb.and().append(" exists (select 1 from cemediapart as portfolioRefMediaPart")
-			  .append(" inner join cepagebody as portfolioRefBody on (portfolioRefBody.key=portfolioRefMediaPart.body.key)")
-			  .append(" inner join cepage as pagePortfolioRef on (pagePortfolioRef.body.key=portfolioRefBody.key)")
-			  .append(" where portfolioRefMediaPart.media.key=media.key and pagePortfolioRef.key not in (")
-			  .append("   select pageRef.page.key from cepagereference pageRef where pageRef.page.key=pagePortfolioRef.key")
-			  .append(" ))");
+			sb.and()
+			  .append(" (")
+			  .append("  exists (select 1 from cemediapart as portfolioRefMediaPart")
+			  .append("   inner join cepagebody as portfolioRefBody on (portfolioRefBody.key=portfolioRefMediaPart.body.key)")
+			  .append("   inner join cepage as pagePortfolioRef on (pagePortfolioRef.body.key=portfolioRefBody.key)")
+			  .append("   where portfolioRefMediaPart.media.key=media.key and pagePortfolioRef.key not in (")
+			  .append("    select pageRef.page.key from cepagereference pageRef where pageRef.page.key=pagePortfolioRef.key")
+			  .append("  ))")
+			  .append(" or ")
+			  .append("  exists (select 1 from cegallerypart galleryPart")
+			  .append("   inner join mediatopagepart as relation on (relation.pagePart.key=galleryPart.key)")
+			  .append("   inner join cepagebody as body on (body.key=galleryPart.body.key)")
+			  .append("   inner join cepage as page on (page.body.key=body.key)")
+			  .append("   where relation.media.key=media.key and page.key not in (")
+			  .append("    select pageRef.page.key from cepagereference pageRef where pageRef.page.key=page.key")
+			  .append("  ))")
+			  .append(" )");
 		} else if(parameters.getUsedIn().contains(UsedIn.NOT_USED)) {
 			sb.and().append(" not exists(select mediaPart.key from cemediapart mediaPart")
 			  .append("  where mediaPart.media.key=media.key")
-			  .append(" )");
+			  .append(" )")
+			  .and()
+			  .append(" not exists(")
+			  .append("  select galleryPart.key from cegallerypart galleryPart")
+			  .append("   inner join mediatopagepart as relation on (relation.pagePart.key=galleryPart.key)")
+			  .append("   where relation.media.key=media.key)");
 		}
 	}
 }

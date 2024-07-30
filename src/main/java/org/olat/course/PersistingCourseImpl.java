@@ -160,53 +160,28 @@ public class PersistingCourseImpl implements ICourse, OLATResourceable, Serializ
 
 	@Override
 	public VFSContainer getCourseFolderContainer() {
-		// add local course folder's children as read/write source and any sharedfolder as subfolder
-		MergedCourseContainer courseFolderContainer = new MergedCourseContainer(resourceableId, getCourseTitle(), null,
-				true, CourseContainerOptions.all(), false);
-		courseFolderContainer.init(this);
-		return courseFolderContainer;
-	}
-
-	@Override
-	public VFSContainer getCourseFolderContainer(CourseContainerOptions options) {
-		// add local course folder's children as read/write source and any sharedfolder as subfolder
-		MergedCourseContainer courseFolderContainer = new MergedCourseContainer(resourceableId, getCourseTitle(), null,
-				true, options, false);
-		courseFolderContainer.init(this);
-		return courseFolderContainer;
-	}
-
-	@Override
-	public VFSContainer getCourseFolderContainer(boolean overrideReadOnly) {
-		// add local course folder's children as read/write source and any sharedfolder as subfolder
-		MergedCourseContainer courseFolderContainer = new MergedCourseContainer(resourceableId, getCourseTitle(), null,
-				true, CourseContainerOptions.all(), overrideReadOnly);
-		courseFolderContainer.init(this);
-		return courseFolderContainer;
-	}
-
-	@Override
-	public VFSContainer getCourseFolderContainer(IdentityEnvironment identityEnv) {
-		// add local course folder's children as read/write source and any sharedfolder as subfolder
-		MergedCourseContainer courseFolderContainer = new MergedCourseContainer(resourceableId, getCourseTitle(), identityEnv,
-				false, CourseContainerOptions.all(), false);
-		courseFolderContainer.init(this);
-		return courseFolderContainer;
+		return getCourseFolderContainer(null, CourseContainerOptions.all(), false, Boolean.TRUE);
 	}
 	
-	/**
-	 * @see org.olat.course.ICourse#getCourseEnvironment()
-	 */
+	@Override
+	public VFSContainer getCourseFolderContainer(CourseContainerOptions options) {
+		return getCourseFolderContainer(null, options, false, Boolean.TRUE);
+	}
+
+	@Override
+	public VFSContainer getCourseFolderContainer(IdentityEnvironment identityEnv, CourseContainerOptions options,
+			boolean overrideReadOnly, Boolean entryAdmin) {
+		RepositoryEntry re = getCourseEnvironment().getCourseGroupManager().getCourseEntry();
+		return CourseFactory.loadCourseContainer(re, identityEnv, options, overrideReadOnly, entryAdmin);
+	}
+	
 	@Override
 	public CourseEnvironment getCourseEnvironment() {
 		return courseEnvironment;
 	}
 
-	/**
-	 * @see org.olat.course.ICourse#getCourseTitle()
-	 */
 	@Override
-	public String getCourseTitle() {	
+	public String getCourseTitle() {
 		if (courseTitle == null) {
 			synchronized (courseTitleSyncObj) { //o_clusterOK by:ld/se
 				// load repository entry for this course and get title from it

@@ -61,6 +61,7 @@ import org.olat.core.gui.control.generic.closablewrapper.CloseableModalControlle
 import org.olat.core.gui.control.generic.dtabs.Activateable2;
 import org.olat.core.gui.control.generic.modal.DialogBoxController;
 import org.olat.core.gui.control.generic.modal.DialogBoxUIFactory;
+import org.olat.core.gui.media.MediaResource;
 import org.olat.core.id.Identity;
 import org.olat.core.id.OLATResourceable;
 import org.olat.core.id.context.ContextEntry;
@@ -87,7 +88,6 @@ import org.olat.modules.forms.EvaluationFormParticipationStatus;
 import org.olat.modules.forms.EvaluationFormSurvey;
 import org.olat.modules.forms.EvaluationFormSurveyIdentifier;
 import org.olat.modules.forms.SessionFilterFactory;
-import org.olat.modules.forms.ui.EvaluationFormExcelExport;
 import org.olat.modules.forms.ui.EvaluationFormExcelExport.UserColumns;
 import org.olat.modules.forms.ui.UserPropertiesColumns;
 import org.olat.repository.RepositoryEntry;
@@ -107,7 +107,7 @@ public class FormParticipationListController extends FormBasicController impleme
 	private static final String CMD_SELECT = "select";
 	
 	private FormLink resetAllButton;
-	private FormLink excelButton;
+	private FormLink exportButton;
 	private final List<UserPropertyHandler> userPropertyHandlers;
 	private FormParticipationTableModel dataModel;
 	private FlexiTableElement tableEl;
@@ -152,9 +152,6 @@ public class FormParticipationListController extends FormBasicController impleme
 		this.secCallback = secCallback;
 		courseEntry = coachCourseEnv.getCourseEnvironment().getCourseGroupManager().getCourseEntry();
 		
-		EvaluationFormSurveyIdentifier surveyIdent = formManager.getSurveyIdentifier(courseNode, courseEntry);
-		survey = formManager.loadSurvey(surveyIdent);
-		
 		boolean isAdministrativeUser = securityModule.isUserAllowedAdminProps(ureq.getUserSession().getRoles());
 		userPropertyHandlers = userManager.getUserPropertyHandlersFor(FormParticipationTableModel.USAGE_IDENTIFIER, isAdministrativeUser);
 		
@@ -163,12 +160,19 @@ public class FormParticipationListController extends FormBasicController impleme
 						getIdentity(), coachCourseEnv.isAdmin(), coachCourseEnv.isCoach());
 		fakeParticipants = securityManager.loadIdentityByRefs(fakeParticipantRefs);
 		
+		EvaluationFormSurveyIdentifier surveyIdent = formManager.getSurveyIdentifier(courseNode, courseEntry);
+		survey = formManager.loadSurvey(surveyIdent);
+		
 		initForm(ureq);
 		reload();
 	}
 
 	@Override
 	protected void initForm(FormItemContainer formLayout, Controller listener, UserRequest ureq) {
+		if (survey == null) {
+			flc.contextPut("errorNoSurvey", Boolean.TRUE);
+		} 
+		
 		FormLayoutContainer buttonsTopCont = FormLayoutContainer.createButtonLayout("buttons.top", getTranslator());
 		buttonsTopCont.setElementCssClass("o_button_group o_button_group_right");
 		buttonsTopCont.setRootForm(mainForm);
@@ -179,8 +183,8 @@ public class FormParticipationListController extends FormBasicController impleme
 			resetAllButton.setIconLeftCSS("o_icon o_icon-fw o_icon_delete_item");
 		}
 		
-		excelButton = uifactory.addFormLink("excel.export", buttonsTopCont, Link.BUTTON); 
-		excelButton.setIconLeftCSS("o_icon o_icon-fw o_icon_eva_export");
+		exportButton = uifactory.addFormLink("excel.export", buttonsTopCont, Link.BUTTON); 
+		exportButton.setIconLeftCSS("o_icon o_icon-fw o_icon_eva_export");
 		
 		FlexiTableSortOptions options = new FlexiTableSortOptions();
 		FlexiTableColumnModel columnsModel = FlexiTableDataModelFactory.createFlexiTableColumnModel();
@@ -259,6 +263,9 @@ public class FormParticipationListController extends FormBasicController impleme
 			ContextEntry entry = entries.get(0);
 			String resourceType = entry.getOLATResourceable().getResourceableTypeName();
 			if(ORES_TYPE_IDENTITY.equals(resourceType)) {
+				if (dataModel == null) {
+					return; // Errors in configuration
+				}
 				Long identityKey = entries.get(0).getOLATResourceable().getResourceableId();
 				for(int i=dataModel.getRowCount(); i--> 0; ) {
 					FormParticipationRow row = dataModel.getObject(i);
@@ -360,7 +367,7 @@ public class FormParticipationListController extends FormBasicController impleme
 			} else if(event instanceof FlexiTableSearchEvent) {
 				reload();
 			}
-		} else if (source == excelButton) {
+		} else if (source == exportButton) {
 			doExport(ureq);
 		} else if (source == resetAllButton) {
 			doConfirmDeleteAllData(ureq);
@@ -451,8 +458,8 @@ public class FormParticipationListController extends FormBasicController impleme
 
 	private void doExport(UserRequest ureq) {
 		UserColumns userColumns = new UserPropertiesColumns(userPropertyHandlers, getTranslator());
-		EvaluationFormExcelExport excelExport = formManager.getExcelExport(courseNode, survey.getIdentifier(), userColumns);
-		ureq.getDispatchResult().setResultingMediaResource(excelExport.createMediaResource());
+		MediaResource mediaResource = formManager.getExport(courseNode, survey.getIdentifier(), userColumns);
+		ureq.getDispatchResult().setResultingMediaResource(mediaResource);
 	}
 	
 	private void doConfirmDeleteAllData(UserRequest ureq) {
